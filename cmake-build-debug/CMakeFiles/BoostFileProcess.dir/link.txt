@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/BoostFileProcess.dir/main.cpp.o CMakeFiles/BoostFileProcess.dir/FlowRpcProcessor.cpp.o  -o BoostFileProcess  -L/env/platforms/x86_64/so  -L/env/platforms/x86_64/static -Wl,-rpath,/env/platforms/x86_64/so:/env/platforms/x86_64/static -lpthread -lboost_filesystem -lboost_system 

@@ -1,3 +1,0 @@
-/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/CMakeFiles/BoostFileProcess.dir
-/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/CMakeFiles/edit_cache.dir
