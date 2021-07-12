@@ -26,7 +26,7 @@ int main() {
 
 
     std::thread t([&](){
-        for (int idx = 0; idx < 1000; ++idx){
+        for (int idx = 0; idx < 100; ++idx){
             frpc.SendToFlow(data);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }

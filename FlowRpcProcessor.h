@@ -27,12 +27,13 @@ public:
     FlowRpcProcessor(){
         loop_times = 5;
         sys_quit = false;
+        count_successfully = 0;
+        count_failed = 0;
         sys_data_path="/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/";
 
         LoadFileNames(sys_data_path);
 
-        count_successfully = 0;
-        count_failed = 0;
+
     };
     ~FlowRpcProcessor(){
         dump();

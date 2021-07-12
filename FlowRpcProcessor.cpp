@@ -39,6 +39,7 @@ void FlowRpcProcessor::run() {
     //计算发送失败的次数
     int cnt = 0;
     while(true){
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (sys_quit) {
             dump();
             return;
@@ -54,14 +55,15 @@ void FlowRpcProcessor::run() {
         m_qlock.unlock();
 
         while (cnt++ < loop_times ){
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
             //不断发送数据
             if (SendMessage(info)){
-                std::cout<<"send successfully "<<++count_successfully<<std::endl;
+                std::cout<<"send successfully ============================"<<++count_successfully<<std::endl;
                 cnt = 0;
                 success_flag=true;
                 break;
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
         if (cnt >= loop_times){
@@ -88,7 +90,6 @@ bool FlowRpcProcessor::SendMessage(const std::string& data){
 
     return false;
 }
-
 void FlowRpcProcessor::Split(const std::string& data){
     int index = 0;
     int dataidx = 0;
@@ -111,10 +112,12 @@ void FlowRpcProcessor::MoveData() {
         {
             return;
         }
+        if (m_queue.empty() && !success_flag)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         m_qlock.lock();
         if (m_queue.empty()){
-            if (!m_fail_queue.empty()){
+            if (!m_fail_queue.empty() && success_flag){
                 std::cout<<"==========data swap from failed queue========== failqueue size:  "<<m_fail_queue.size()<<"  queue size is:  "<<m_queue.size()<<std::endl;
                 m_fqlock.lock();
                 std::swap(m_fail_queue, m_queue);
@@ -131,14 +134,15 @@ void FlowRpcProcessor::MoveData() {
             m_fail_queue.pop();
             std::cout<<"==========data one from  failed queue========== failqueue size:  "<<m_fail_queue.size()<<"  queue size is:  "<<m_queue.size()<<"  \n";
             m_fqlock.unlock();
-            success_flag = false;
             //data queue enqueue;
             if (!info.empty())
                 m_queue.push(info);
         }
         m_qlock.unlock();
 
-        if (m_fail_queue.empty() && m_queue.empty()){
+        if (m_fail_queue.empty() && m_queue.empty() && success_flag){
+
+            std::cout<<"============== faile queue empty, m_queue empty  success_flag == true"<<std::endl;
 
             //读本地文件 files 按时间升序 排列 ,第一个即历史最久的文件
             if (files.size() > 0){
@@ -163,7 +167,7 @@ void FlowRpcProcessor::MoveData() {
                     std::cout<<"delete file failed!"<<std::endl;
                 }
             }
-
+            success_flag = false;
         }
 
         m_fqlock.lock();
@@ -180,7 +184,7 @@ void FlowRpcProcessor::MoveData() {
 
             long int time = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
             std::string name = sys_data_path+std::to_string(time)+".data.over";
-            std::cout<<"m_faile_queue size is greater than 5!!! save in file "<<name<<std::endl;
+
             files.push_back(std::pair<std::string, long int>(name, time));
             std::ofstream ofs(name, std::ios::app);
             while(m_fail_queue.size() > 0){
@@ -188,6 +192,7 @@ void FlowRpcProcessor::MoveData() {
                 m_fail_queue.pop();
             }
             ofs.close();
+            std::cout<<"m_faile_queue size is greater than 5!!! save in file and m_faile_queue size is: "<<m_fail_queue.size()<<name<<std::endl;
         }
         m_fqlock.unlock();
     }
@@ -219,8 +224,8 @@ void FlowRpcProcessor::LoadFileNames(const std::string& path){
 
         // 将文件按时间排序
         std::sort(files.begin(), files.end(),
-                [&](std::pair<std::string, long int> a, std::pair<std::string, long int> b){
-                            return a.second < b.second;});
+                  [&](std::pair<std::string, long int> a, std::pair<std::string, long int> b){
+                      return a.second < b.second;});
 
         return ;
     }
@@ -254,7 +259,6 @@ void FlowRpcProcessor::dump(){
     }
     ofs.close();
 }
-
 void FlowRpcProcessor::print() {
     auto p_queue = m_queue;
     while(p_queue.size() > 0)
