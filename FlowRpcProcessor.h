@@ -24,7 +24,7 @@
 
 class FlowRpcProcessor {
 public:
-    FlowRpcProcessor(){
+    FlowRpcProcessor(std::function<bool(std::string)> func){
         loop_times = 5;
         sys_quit = false;
         count_successfully = 0;
@@ -32,6 +32,11 @@ public:
         sys_data_path="/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/";
 
         LoadFileNames(sys_data_path);
+
+
+
+        callfunc = func;
+
 
 
     };
@@ -49,6 +54,8 @@ public:
 
     void LoadFileNames(const std::string& path);
 
+    void SaveDatatoFile();
+
     void run();
 
     void dump();
@@ -63,6 +70,8 @@ private:
     std::mutex m_qmutex;   // data queue mutex
     std::mutex m_fqmutex;  //failed queue mutex;
     std::vector<std::pair<std::string, long int>> files;
+
+    std::function<bool(std::string)> callfunc;
 
 
     int count_successfully;

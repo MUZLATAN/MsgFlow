@@ -5,24 +5,30 @@
 #include <zconf.h>
 #include <fstream>
 
+bool SendMethod(const std::string& data){
+
+
+    //TODO 此处定义网络发送函数
+
+
+    //此处暂时定义模拟发送函数, 模拟成功失败的概率
+    struct timeb timeSeed;
+    std::cout<<"in SendMethod"<<std::endl;
+    ftime(&timeSeed);
+    srand(timeSeed.time * 1000 + timeSeed.millitm);  // milli time
+    int r = rand() %11;
+    if (r % 7 == 0)
+        return true;
+
+    return false;
+}
+
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-//    std::string data ="{\"type\":0,\"table_name\":\"cv_algo_trajectory\",\"db_name\":\"lantern\",\"data\":{\"loc_x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"WKA2020330000055C77\",\"traj_id\":\"1625122605093_298\",\"loc_y\":\"408\",\"image_url\":\"https://whale-cv-prod.oss-cn-hangzhou.aliyuncs.com/WOP202033000005C037/WKA2020330000055C77/image/traj/1625122605093_231_1625122637001.jpg\"}}";
-//    std::cout<<data.length()<<std::endl;
-//    std::string url =  "https://loggerconfig.meetwhale.com/api/v1/write";
-//    std::string response;
-//    HttpPost(url.c_str(), data, response, 3, 5);
-//    std::cout<<response<<std::endl;
 
+    std::string data ="{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}";
 
-    std::string data ="{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"WKA2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}";
-
-
-    FlowRpcProcessor frpc;
-    std::string data1 = "{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"WKA2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}#&&#{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"WKA2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}#&&#{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"WKA2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}#&&#";
-    std::cout<<data1.length()<<std::endl;
-
-
+    auto func = std::bind(&SendMethod, std::placeholders::_1);
+    FlowRpcProcessor frpc(func);
 
 
     std::thread t([&](){

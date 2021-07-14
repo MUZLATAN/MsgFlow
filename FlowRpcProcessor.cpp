@@ -28,7 +28,7 @@ void FlowRpcProcessor::run() {
     std::unique_lock<std::mutex> m_fqlock(m_fqmutex, std::defer_lock);
 
     //新开一个线程, 来检查m_queue的状态
-    //m_queue 为空 就网里面塞数据
+    //m_queue 为空 就向里面塞数据
     //fail_queue 数据过多, 存入磁盘
     //注意内存对齐  暂时未做
     std::thread t1([&](){
@@ -74,21 +74,44 @@ void FlowRpcProcessor::run() {
             cnt = 0;
             m_fqlock.unlock();
         }
+
+        SaveDatatoFile();
     }
 }
+void FlowRpcProcessor::SaveDatatoFile() {
+    std::unique_lock<std::mutex> m_fqlock(m_fqmutex);
+    if (m_fail_queue.size() >= 5){
+        if (files.size()> 100)
+        {
+            auto top = files.front();
+            files.erase(files.begin());
+            //删除文件
+            if(::remove(top.first.c_str())!=0){
+                std::cout<<"delete file failed!"<<std::endl;
+            }
+        }
 
+        long int time = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
+        std::string name = sys_data_path+std::to_string(time)+".data.over";
+
+        files.push_back(std::pair<std::string, long int>(name, time));
+        std::ofstream ofs(name, std::ios::app);
+        while(m_fail_queue.size() > 0){
+            ofs<<m_fail_queue.front()<<SEPARATION;
+            m_fail_queue.pop();
+        }
+        ofs.close();
+        std::cout<<"m_faile_queue size is greater than 5!!! save in file and m_faile_queue size is: "<<m_fail_queue.size()<<name<<std::endl;
+    }
+    m_fqlock.unlock();
+}
 bool FlowRpcProcessor::SendMessage(const std::string& data){
-    // 优化, 如果能让某几个api一直连接, 发送出去会比较快
-
-    //模拟发送成功失败的概率
-    struct timeb timeSeed;
-    ftime(&timeSeed);
-    srand(timeSeed.time * 1000 + timeSeed.millitm);  // milli time
-    int r = rand() %11;
-    if (r % 7 == 0)
+    //使用回调函数
+    if (callfunc(data)){
         return true;
+    } else
+        return false;
 
-    return false;
 }
 void FlowRpcProcessor::Split(const std::string& data){
     int index = 0;
@@ -127,7 +150,9 @@ void FlowRpcProcessor::MoveData() {
         m_qlock.unlock();
 
         m_qlock.lock();
-        if (!m_fail_queue.empty() && success_flag){
+        //如果网络环境太差, 一直发不出去, 这里就会陷入循环
+        //数据会在m_queue 和m_fail_queue里面反复循环
+        if (!m_fail_queue.empty()){
             //failed queue pop;
             m_fqlock.lock();
             auto info = m_fail_queue.front();
@@ -169,32 +194,6 @@ void FlowRpcProcessor::MoveData() {
             }
             success_flag = false;
         }
-
-        m_fqlock.lock();
-        if (m_fail_queue.size() >= 5){
-            if (files.size()> 100)
-            {
-                auto top = files.front();
-                files.erase(files.begin());
-                //删除文件
-                if(::remove(top.first.c_str())!=0){
-                    std::cout<<"delete file failed!"<<std::endl;
-                }
-            }
-
-            long int time = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
-            std::string name = sys_data_path+std::to_string(time)+".data.over";
-
-            files.push_back(std::pair<std::string, long int>(name, time));
-            std::ofstream ofs(name, std::ios::app);
-            while(m_fail_queue.size() > 0){
-                ofs<<m_fail_queue.front()<<SEPARATION;
-                m_fail_queue.pop();
-            }
-            ofs.close();
-            std::cout<<"m_faile_queue size is greater than 5!!! save in file and m_faile_queue size is: "<<m_fail_queue.size()<<name<<std::endl;
-        }
-        m_fqlock.unlock();
     }
 }
 
