@@ -34,7 +34,7 @@ int main() {
     std::thread t([&](){
         for (int idx = 0; idx < 100; ++idx){
             frpc.SendToFlow(data);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
 
@@ -44,10 +44,11 @@ int main() {
     t.detach();
     t1.detach();
 
-    while(true)
+    // while(true)
         sleep(10);
-    sleep(500);
+    // sleep(500);
     frpc.sys_quit = true;
+    sleep(10);
 
 
     return 0;

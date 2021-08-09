@@ -8,7 +8,6 @@
 
 void FlowRpcProcessor::SendToFlow(const std::string& eventStr){
     std::unique_lock<std::mutex> qlock(m_qmutex, std::defer_lock);
-    // package the eventStr
 
     qlock.lock();
     {
@@ -24,8 +23,9 @@ void FlowRpcProcessor::SendToFlow(const std::string& eventStr){
 }
 
 void FlowRpcProcessor::run() {
-    std::unique_lock<std::mutex> m_qlock(m_qmutex, std::defer_lock);
-    std::unique_lock<std::mutex> m_fqlock(m_fqmutex, std::defer_lock);
+
+    LoadFileNames("./");
+
 
     //新开一个线程, 来检查m_queue的状态
     //m_queue 为空 就向里面塞数据
@@ -35,47 +35,76 @@ void FlowRpcProcessor::run() {
         MoveData();
     });
     t1.detach();
+    std::unique_lock<std::mutex> m_qlock(m_qmutex, std::defer_lock);
+    std::unique_lock<std::mutex> m_fqlock(m_fqmutex, std::defer_lock);
 
     //计算发送失败的次数
+    int count = 0;
     int cnt = 0;
     while(true){
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if (sys_quit) {
             dump();
             return;
         }
         //不断取数据
-        m_qlock.lock();
         if (m_queue.empty()){
-            m_qlock.unlock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
+        m_qlock.lock();
         auto info = m_queue.front();
         m_queue.pop();
         m_qlock.unlock();
 
-        while (cnt++ < loop_times ){
 
+        while (cnt++ < loop_times ){
             //不断发送数据
             if (SendMessage(info)){
-                std::cout<<"send successfully ============================"<<++count_successfully<<std::endl;
                 cnt = 0;
                 success_flag=true;
+                std::cout<<"send successfully "<<count++<<std::endl;
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+        
 
         if (cnt >= loop_times){
-            std::cout<<"send failed "<<++count_failed<<std::endl;
-            m_fqlock.lock();
             success_flag=false;
+            m_fqlock.lock();
             m_fail_queue.push(info);
             cnt = 0;
             m_fqlock.unlock();
         }
 
-        SaveDatatoFile();
+        
+        if (m_fail_queue.size() >= 5){
+            if (files.size()> 100)
+            {
+                auto top = files.front();
+                files.erase(files.begin());
+                //删除文件
+                if(::remove(top.first.c_str())!=0){
+                    std::cout<<"delete file failed!"<<std::endl;
+                }
+            }
+
+            long int time = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
+            std::string name = sys_data_path+std::to_string(time)+".data.over";
+            
+            files.push_back(std::pair<std::string, long int>(name, time));
+            std::ofstream ofs(name, std::ios::app);
+            m_fqlock.lock();
+            while(m_fail_queue.size() > 0){
+                ofs<<m_fail_queue.front()<<SEPARATION;
+                m_fail_queue.pop();
+            }
+            ofs.close();
+            std::cout<<"m_faile_queue size is greater than 5!!! save in file and m_faile_queue size is: "<<m_fail_queue.size()<<name;
+            m_fqlock.unlock();
+        }
+        
     }
 }
 void FlowRpcProcessor::SaveDatatoFile() {
@@ -136,38 +165,40 @@ void FlowRpcProcessor::MoveData() {
             return;
         }
         if (m_queue.empty() && !success_flag)
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        m_qlock.lock();
         if (m_queue.empty()){
             if (!m_fail_queue.empty() && success_flag){
-                std::cout<<"==========data swap from failed queue========== failqueue size:  "<<m_fail_queue.size()<<"  queue size is:  "<<m_queue.size()<<std::endl;
                 m_fqlock.lock();
                 std::swap(m_fail_queue, m_queue);
                 m_fqlock.unlock();
             }
         }
-        m_qlock.unlock();
+     
 
-        m_qlock.lock();
-        //如果网络环境太差, 一直发不出去, 这里就会陷入循环
-        //数据会在m_queue 和m_fail_queue里面反复循环
-        if (!m_fail_queue.empty()){
+        
+        if (!m_fail_queue.empty() && success_flag){
             //failed queue pop;
+            std::cout <<"data from failed queue lock";
             m_fqlock.lock();
             auto info = m_fail_queue.front();
             m_fail_queue.pop();
-            std::cout<<"==========data one from  failed queue========== failqueue size:  "<<m_fail_queue.size()<<"  queue size is:  "<<m_queue.size()<<"  \n";
             m_fqlock.unlock();
+            std::cout<<"data from failed queue ulock";
             //data queue enqueue;
-            if (!info.empty())
+            if (!info.empty()){
+                std::cout<<"failed queue to data queue lock";
+                m_qlock.lock();
                 m_queue.push(info);
+                m_qlock.unlock();
+                std::cout<<"failed queue to data queue unlock";
+            }
+                
         }
-        m_qlock.unlock();
+        
 
         if (m_fail_queue.empty() && m_queue.empty() && success_flag){
 
-            std::cout<<"============== faile queue empty, m_queue empty  success_flag == true"<<std::endl;
 
             //读本地文件 files 按时间升序 排列 ,第一个即历史最久的文件
             if (files.size() > 0){
@@ -179,8 +210,9 @@ void FlowRpcProcessor::MoveData() {
                 std::string str = oss.str();
                 std::cout<<str<<std::endl;
                 //将str分开存入m_queuue
+                m_qlock.lock();
                 Split(str);
-                std::cout<<"==========data from file=========  "<<top.first<<" "<<files.size()-1<<" "<<m_queue.size()<<std::endl;
+                m_qlock.unlock();
                 //从维护的vector 中删除记录
                 files.erase(files.begin());
                 std::cout<<files.begin()->first<<std::endl;
