@@ -2,8 +2,8 @@
 // Created by z on 2021/7/5.
 //
 
-#ifndef BOOSTFILEPROCESS_FLOWRPCPROCESSOR_H
-#define BOOSTFILEPROCESS_FLOWRPCPROCESSOR_H
+#ifndef BOOSTFILEPROCESS_MsgFlow_H
+#define BOOSTFILEPROCESS_MsgFlow_H
 
 
 #include "boost/filesystem.hpp"
@@ -22,9 +22,9 @@
 
 #define  SEPARATION "#&&#"
 
-class FlowRpcProcessor {
+class MsgFlow {
 public:
-    FlowRpcProcessor(std::function<bool(std::string)> func){
+    MsgFlow(std::function<bool(std::string)> func){
         loop_times = 5;
         sys_quit = false;
         count_successfully = 0;
@@ -40,7 +40,7 @@ public:
 
 
     };
-    ~FlowRpcProcessor(){
+    ~MsgFlow(){
         dump();
     }
 
@@ -80,4 +80,4 @@ private:
 public:
     bool sys_quit;
 };
-#endif //BOOSTFILEPROCESS_FLOWRPCPROCESSOR_H
+#endif //BOOSTFILEPROCESS_MsgFlow_H

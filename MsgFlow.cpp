@@ -4,9 +4,9 @@
 
 
 
-#include "FlowRpcProcessor.h"
+#include "MsgFlow.h"
 
-void FlowRpcProcessor::SendToFlow(const std::string& eventStr){
+void MsgFlow::SendToFlow(const std::string& eventStr){
     std::unique_lock<std::mutex> qlock(m_qmutex, std::defer_lock);
 
     qlock.lock();
@@ -22,7 +22,7 @@ void FlowRpcProcessor::SendToFlow(const std::string& eventStr){
     qlock.unlock();
 }
 
-void FlowRpcProcessor::run() {
+void MsgFlow::run() {
 
     LoadFileNames("./");
 
@@ -107,7 +107,7 @@ void FlowRpcProcessor::run() {
         
     }
 }
-void FlowRpcProcessor::SaveDatatoFile() {
+void MsgFlow::SaveDatatoFile() {
     std::unique_lock<std::mutex> m_fqlock(m_fqmutex);
     if (m_fail_queue.size() >= 5){
         if (files.size()> 100)
@@ -134,7 +134,7 @@ void FlowRpcProcessor::SaveDatatoFile() {
     }
     m_fqlock.unlock();
 }
-bool FlowRpcProcessor::SendMessage(const std::string& data){
+bool MsgFlow::SendMessage(const std::string& data){
     //使用回调函数
     if (callfunc(data)){
         return true;
@@ -142,7 +142,7 @@ bool FlowRpcProcessor::SendMessage(const std::string& data){
         return false;
 
 }
-void FlowRpcProcessor::Split(const std::string& data){
+void MsgFlow::Split(const std::string& data){
     int index = 0;
     int dataidx = 0;
     while ((dataidx = data.find(SEPARATION, index)) <= data.length())
@@ -156,7 +156,7 @@ void FlowRpcProcessor::Split(const std::string& data){
 
 }
 
-void FlowRpcProcessor::MoveData() {
+void MsgFlow::MoveData() {
     std::unique_lock<std::mutex> m_qlock(m_qmutex, std::defer_lock);
     std::unique_lock<std::mutex> m_fqlock(m_fqmutex, std::defer_lock);
     while (true){
@@ -230,7 +230,7 @@ void FlowRpcProcessor::MoveData() {
 }
 
 
-void FlowRpcProcessor::LoadFileNames(const std::string& path){
+void MsgFlow::LoadFileNames(const std::string& path){
     boost::filesystem::path p (path);
     try{
         if (exists(p)){
@@ -265,7 +265,7 @@ void FlowRpcProcessor::LoadFileNames(const std::string& path){
         std::cout << ex.what() << '\n';
     }
 }
-void FlowRpcProcessor::dump(){
+void MsgFlow::dump(){
     //if this processor exit
     // dump the queue's content
     long int time = std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
@@ -290,7 +290,7 @@ void FlowRpcProcessor::dump(){
     }
     ofs.close();
 }
-void FlowRpcProcessor::print() {
+void MsgFlow::print() {
     auto p_queue = m_queue;
     while(p_queue.size() > 0)
     {

@@ -1,4 +1,4 @@
-#include "FlowRpcProcessor.h"
+#include "MsgFlow.h"
 
 
 #include <iostream>
@@ -28,7 +28,7 @@ int main() {
     std::string data ="{\"type\":0,\"tbname\":\"trajectory\",\"dbname\":\"lan\",\"data\":{\"x\":\"105\",\"timestamp\":1625122637500,\"sn\":\"2020\",\"id\":\"298\",\"y\":\"408\",\"url\":\"001.jpg\"}}";
 
     auto func = std::bind(&SendMethod, std::placeholders::_1);
-    FlowRpcProcessor frpc(func);
+    MsgFlow frpc(func);
 
 
     std::thread t([&](){
