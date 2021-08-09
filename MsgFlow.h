@@ -29,7 +29,7 @@ public:
         sys_quit = false;
         count_successfully = 0;
         count_failed = 0;
-        sys_data_path="/home/z/CWorkspace/BoostFileProcess/cmake-build-debug/";
+        sys_data_path="./";
 
         LoadFileNames(sys_data_path);
 

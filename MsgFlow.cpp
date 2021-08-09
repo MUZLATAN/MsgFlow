@@ -23,10 +23,6 @@ void MsgFlow::SendToFlow(const std::string& eventStr){
 }
 
 void MsgFlow::run() {
-
-    LoadFileNames("./");
-
-
     //新开一个线程, 来检查m_queue的状态
     //m_queue 为空 就向里面塞数据
     //fail_queue 数据过多, 存入磁盘
